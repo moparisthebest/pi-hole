@@ -176,6 +176,11 @@ echo "interface $piholeInterface
 static ip_address=$IPv4addr
 static routers=$IPv4gw
 static domain_name_servers=$IPv4gw" | sudo tee -a $dhcpcdFile >/dev/null
+<<<<<<< HEAD
+=======
+echo "Setting IP to $IPv4addr.  You may need to restart after the install is complete."
+sudo ip addr replace dev $piholeInterface $IPv4addr
+>>>>>>> master
 }
 
 setStaticIPv4(){
@@ -216,9 +221,30 @@ sudo apt-get -y upgrade
 sudo apt-get -y install dnsutils bc toilet
 sudo apt-get -y install dnsmasq
 sudo apt-get -y install lighttpd php5-common php5-cgi php5
+<<<<<<< HEAD
 }
 
 installWebAdmin(){
+=======
+sudo mkdir /var/www/html
+sudo chown www-data:www-data /var/www/html
+sudo chmod 775 /var/www/html
+sudo usermod -a -G www-data pi
+sudo service dnsmasq stop
+sudo service lighttpd stop
+sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
+sudo mv /etc/lighttpd/lighttpd.conf /etc/lighttpd/lighttpd.conf.orig
+sudo mv /var/www/html/index.lighttpd.html /var/www/html/index.lighttpd.orig
+sudo mv /etc/crontab /etc/crontab.orig
+sudo curl -o /etc/dnsmasq.conf https://raw.githubusercontent.com/jacobsalmela/pi-hole/master/advanced/dnsmasq.conf
+sudo sed -i "s/@INT@/$piholeInterface/" /etc/dnsmasq.conf
+sudo curl -o /etc/lighttpd/lighttpd.conf https://raw.githubusercontent.com/jacobsalmela/pi-hole/master/advanced/lighttpd.conf
+sudo mv /etc/crontab /etc/crontab.orig
+sudo curl -o /etc/crontab https://raw.githubusercontent.com/jacobsalmela/pi-hole/master/advanced/pihole.cron
+sudo lighty-enable-mod fastcgi fastcgi-php
+sudo mkdir /var/www/html/pihole
+sudo curl -o /var/www/html/pihole/index.html https://raw.githubusercontent.com/jacobsalmela/pi-hole/master/advanced/index.html
+>>>>>>> master
 sudo wget https://github.com/jacobsalmela/AdminLTE/archive/master.zip -O /var/www/master.zip
 sudo unzip -oq /var/www/master.zip -d /var/www/html/
 sudo mv /var/www/html/AdminLTE-master /var/www/html/admin
