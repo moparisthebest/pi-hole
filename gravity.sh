@@ -10,23 +10,10 @@
 # the Free Software Foundation, either version 2 of the License, or
 # (at your option) any later version.
 
-piholeIPfile=/tmp/piholeIP
-piholeIPv6file=/etc/pihole/.useIPv6
-if [[ -f $piholeIPfile ]];then
-    # If the file exists, it means it was exported from the installation script and we should use that value instead of detecting it in this script
-    piholeIP=$(cat $piholeIPfile)
-    rm $piholeIPfile
-else
-    # Otherwise, the IP address can be taken directly from the machine, which will happen when the script is run by the user and not the installation script
-    IPv4dev=$(ip route get 8.8.8.8 | awk '{for(i=1;i<=NF;i++)if($i~/dev/)print $(i+1)}')
-    piholeIPCIDR=$(ip -o -f inet addr show dev $IPv4dev | awk '{print $4}' | awk 'END {print}')
-    piholeIP=${piholeIPCIDR%/*}
-fi
-
-if [[ -f $piholeIPv6file ]];then
-    # If the file exists, then the user previously chose to use IPv6 in the automated installer
-    piholeIPv6=$(ip -6 route get 2001:4860:4860::8888 | awk -F " " '{ for(i=1;i<=NF;i++) if ($i == "src") print $(i+1) }')
-fi
+# set your fake webserver ip here
+piholeIP=192.168.1.3
+# ipv6 is optional, comment out to disable
+piholeIPv6='::1'
 
 # Ad-list sources--one per line in single quotes
 # The mahakala source is commented out due to many users having issues with it blocking legitimate domains.
@@ -54,6 +41,7 @@ supernova=$basename.2.supernova.txt
 eventHorizon=$basename.3.eventHorizon.txt
 accretionDisc=$basename.4.accretionDisc.txt
 eyeOfTheNeedle=$basename.5.wormhole.txt
+unboundList=$piholeDir/unbound-block-hosts.conf
 
 # After setting defaults, check if there's local overrides
 if [[ -r $piholeDir/pihole.conf ]];then
@@ -268,6 +256,31 @@ function gravity_reload() {
 	fi
 }
 
+function gravity_unbound() {
+    # Format domain list as:
+    # local-data: "domain.com A 192.168.x.x"
+    # local-data: "domain.com AAAA ::1"
+    echo "** Formatting domains into a unbound config file..."
+    grep "^$piholeIP" "$adList" | awk '{print "local-data: \""$2" A "$1"\""}' > "$unboundList"
+    [ -n $piholeIPv6 ] && grep "^$piholeIPv6" "$adList" | awk '{print "local-data: \""$2" AAAA "$1"\""}' >> "$unboundList"
+    sort "$unboundList" | uniq > "${unboundList}.tmp" && mv "${unboundList}.tmp" "$unboundList"
+}
+
+function gravity_unbound_reload() {
+    # Reload hosts file
+    echo "** Refresh lists in unbound..."
+
+    unboundPid=$(pidof unbound)
+
+    if [[ $unboundPid ]]; then
+        # service already running - reload config
+        sudo service unbound reload
+    else
+        # service not running, start it up
+        sudo service unbound start
+    fi
+}
+
 gravity_collapse
 gravity_spinup
 gravity_Schwarzchild
@@ -275,4 +288,6 @@ gravity_pulsar
 gravity_advanced
 gravity_hostFormat
 gravity_blackbody
-gravity_reload
+#gravity_reload
+gravity_unbound
+gravity_unbound_reload
